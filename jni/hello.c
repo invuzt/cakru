@@ -16,14 +16,10 @@ struct engine {
 
 static int32_t handle_input(struct android_app* app, AInputEvent* event) {
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
-        int action = AMotionEvent_getAction(event);
         int32_t w = ANativeWindow_getWidth(app->window);
         int32_t h = ANativeWindow_getHeight(app->window);
-        if (action == AMOTION_EVENT_ACTION_DOWN || action == AMOTION_EVENT_ACTION_MOVE) {
-            set_rust_touch(AMotionEvent_getX(event, 0)/w, AMotionEvent_getY(event, 0)/h);
-        } else if (action == AMOTION_EVENT_ACTION_UP) {
-            set_rust_touch(-1.0f, -1.0f);
-        }
+        set_rust_touch(AMotionEvent_getX(event, 0)/w, AMotionEvent_getY(event, 0)/h);
+        if (AMotionEvent_getAction(event) == AMOTION_EVENT_ACTION_UP) set_rust_touch(-1.0f, -1.0f);
         return 1;
     }
     return 0;
@@ -36,17 +32,15 @@ static void draw_frame(struct engine* eng) {
     eglQuerySurface(eng->display, eng->surface, EGL_WIDTH, &w);
     eglQuerySurface(eng->display, eng->surface, EGL_HEIGHT, &h);
 
-    glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
+    glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glEnable(GL_SCISSOR_TEST);
-    for(int i = 0; i < 1000; i++) {
-        int bx = (int)(get_box_x(i) * w) - 10;
-        int by = (int)((1.0f - get_box_y(i)) * h) - 1;
-        
-        // Garis lebih tipis (20x2) untuk 1000 partikel
-        glScissor(bx, by, 20, 2);
-        glClearColor(0.4f, 0.9f, 1.0f, 0.8f);
+    for(int i = 0; i < 2000; i++) {
+        int bx = (int)(get_box_x(i) * w);
+        int by = (int)((1.0f - get_box_y(i)) * h);
+        glScissor(bx, by, 4, 4); // Butiran pasir kecil
+        glClearColor(0.9f, 0.8f, 0.5f, 1.0f); // Warna pasir kuning emas
         glClear(GL_COLOR_BUFFER_BIT);
     }
     glDisable(GL_SCISSOR_TEST);
