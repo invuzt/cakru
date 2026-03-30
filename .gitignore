@@ -1,1 +1,7 @@
 *.jks
+*.jkr
+bin/
+gen/
+obj/
+rust_logic/target/
+.DS_Store
