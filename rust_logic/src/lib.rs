@@ -14,8 +14,9 @@ fn init() {
         for i in 0..COUNT {
             BOXES_X[i] = 0.5;
             BOXES_Y[i] = 0.5;
-            VEL_X[i] = (i as f32 * 0.1).sin() * 0.02;
-            VEL_Y[i] = (i as f32 * 0.1).cos() * 0.02;
+            // Kecepatan acak awal
+            VEL_X[i] = ((i as f32 * 7.1).sin() * 0.01);
+            VEL_Y[i] = ((i as f32 * 3.7).cos() * 0.01);
         }
         INITIALIZED = true;
     }
@@ -31,7 +32,6 @@ pub extern "C" fn update_physics() {
     unsafe {
         if !INITIALIZED { init(); }
         for i in 0..COUNT {
-            // Update posisi
             BOXES_X[i] += VEL_X[i];
             BOXES_Y[i] += VEL_Y[i];
 
@@ -39,13 +39,13 @@ pub extern "C" fn update_physics() {
             if BOXES_X[i] < 0.0 || BOXES_X[i] > 1.0 { VEL_X[i] *= -1.0; }
             if BOXES_Y[i] < 0.0 || BOXES_Y[i] > 1.0 { VEL_Y[i] *= -1.0; }
 
-            // Interaksi dengan jari (Efek magnet/tolak)
+            // Interaksi jari (Tarik-menarik)
             let dx = TOUCH_X - BOXES_X[i];
             let dy = TOUCH_Y - BOXES_Y[i];
             let dist = (dx*dx + dy*dy).sqrt();
-            if dist < 0.2 && dist > 0.01 {
-                VEL_X[i] -= dx * 0.005;
-                VEL_Y[i] -= dy * 0.005;
+            if dist < 0.3 && dist > 0.01 {
+                VEL_X[i] += dx * 0.002;
+                VEL_Y[i] += dy * 0.002;
             }
         }
     }
@@ -53,3 +53,9 @@ pub extern "C" fn update_physics() {
 
 #[no_mangle] pub extern "C" fn get_box_x(i: i32) -> f32 { unsafe { BOXES_X[i as usize] } }
 #[no_mangle] pub extern "C" fn get_box_y(i: i32) -> f32 { unsafe { BOXES_Y[i as usize] } }
+
+// Fungsi yang tadi hilang dan bikin error:
+#[no_mangle] 
+pub extern "C" fn get_rust_color_r(t: f32) -> f32 { 
+    (t * 0.5).sin().abs() * 0.2 // Warna merah gelap yang berdenyut
+}
