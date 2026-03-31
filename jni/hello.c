@@ -2,6 +2,7 @@
 #include <android_native_app_glue.h>
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
+#include <android/log.h>
 
 extern float get_cpu_usage();
 extern float get_ram_usage();
@@ -9,60 +10,47 @@ extern float get_bat_level();
 extern float get_temp_level();
 
 struct engine {
-    struct android_app* app;
     EGLDisplay display;
     EGLSurface surface;
     EGLContext context;
+    int32_t width;
+    int32_t height;
 };
-
-void draw_box(float x, float y, float w_pct, float h_pct, float r, float g, float b, int win_w, int win_h) {
-    if (win_w <= 0 || win_h <= 0) return;
-    glScissor((int)(x * win_w), (int)(y * win_h), (int)(w_pct * win_w), (int)(h_pct * win_h));
-    glClearColor(r, g, b, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-}
 
 static void draw_frame(struct engine* engine) {
     if (engine->display == EGL_NO_DISPLAY) return;
 
-    int32_t w, h;
-    eglQuerySurface(engine->display, engine->surface, EGL_WIDTH, &w);
-    eglQuerySurface(engine->display, engine->surface, EGL_HEIGHT, &h);
-
-    glDisable(GL_SCISSOR_TEST);
+    // Bersihkan layar jadi Biru Tua
     glClearColor(0.05f, 0.05f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     
     glEnable(GL_SCISSOR_TEST);
-    float bar_w = 0.7f;
-    float start_x = 0.2f;
-
-    // Gambar 4 Bar utama dengan data simulasi dari Rust
-    draw_box(start_x, 0.85f, bar_w * get_cpu_usage(), 0.05f, 0.9f, 0.1f, 0.1f, w, h); // CPU
-    draw_box(start_x, 0.75f, bar_w * get_ram_usage(), 0.05f, 0.1f, 0.5f, 1.0f, w, h); // RAM
-    draw_box(start_x, 0.65f, bar_w * get_bat_level(), 0.05f, 0.2f, 0.8f, 0.3f, w, h); // BAT
-    draw_box(start_x, 0.55f, bar_w * get_temp_level(), 0.05f, 1.0f, 0.6f, 0.0f, w, h); // TEMP
-
+    
+    // Gambar Bar Sederhana (Hanya satu dulu untuk tes)
+    float val = get_cpu_usage();
+    glScissor(100, 500, (int)(val * 500.0f), 100);
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    glDisable(GL_SCISSOR_TEST);
     eglSwapBuffers(engine->display, engine->surface);
-}
-
-static int init_display(struct engine* engine) {
-    engine->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    eglInitialize(engine->display, 0, 0);
-    const EGLint attribs[] = { EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_BLUE_SIZE, 8, EGL_NONE };
-    EGLConfig config; EGLint numConfigs;
-    eglChooseConfig(engine->display, attribs, &config, 1, &numConfigs);
-    engine->surface = eglCreateWindowSurface(engine->display, config, engine->app->window, NULL);
-    engine->context = eglCreateContext(engine->display, config, NULL, (EGLint[]){EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE});
-    eglMakeCurrent(engine->display, engine->surface, engine->surface, engine->context);
-    return 0;
 }
 
 static void handle_cmd(struct android_app* app, int32_t cmd) {
     struct engine* engine = (struct engine*)app->userData;
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:
-            if (app->window != NULL) init_display(engine);
+            if (app->window != NULL) {
+                engine->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+                eglInitialize(engine->display, 0, 0);
+                EGLConfig config; EGLint num;
+                eglChooseConfig(engine->display, (EGLint[]){EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_NONE}, &config, 1, &num);
+                engine->surface = eglCreateWindowSurface(engine->display, config, app->window, NULL);
+                engine->context = eglCreateContext(engine->display, config, NULL, (EGLint[]){EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE});
+                eglMakeCurrent(engine->display, engine->surface, engine->surface, engine->context);
+                eglQuerySurface(engine->display, engine->surface, EGL_WIDTH, &engine->width);
+                eglQuerySurface(engine->display, engine->surface, EGL_HEIGHT, &engine->height);
+            }
             break;
         case APP_CMD_TERM_WINDOW:
             engine->display = EGL_NO_DISPLAY;
@@ -72,6 +60,7 @@ static void handle_cmd(struct android_app* app, int32_t cmd) {
 
 void android_main(struct android_app* state) {
     struct engine engine = {0};
+    engine.display = EGL_NO_DISPLAY;
     state->userData = &engine;
     state->onAppCmd = handle_cmd;
 
