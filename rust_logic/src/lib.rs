@@ -1,36 +1,36 @@
-use std::os::raw::{c_int, c_uchar};
+static mut PLAYER_X: f32 = 0.5;
+static mut ENEMY_X: f32 = 0.5;
+static mut ENEMY_Y: f32 = 1.0;
+static mut SCORE: i32 = 0;
 
 #[no_mangle]
-pub extern "C" fn cakru_process_image(
-    buffer: *mut c_uchar, 
-    width: c_int, 
-    height: c_int
-) {
-    let w = width as usize;
-    let h = height as usize;
-    let size = (w * h * 4) as usize;
-
+pub extern "C" fn update_game(touch_x: f32) -> i32 {
     unsafe {
-        let pixels = std::slice::from_raw_parts_mut(buffer, size);
+        // 1. Gerakkan Player mengikuti jari
+        if touch_x >= 0.0 { PLAYER_X = touch_x; }
 
-        // Area Watermark: 25% dari lebar, 10% dari tinggi
-        let wm_w = w / 4;
-        let wm_h = h / 10;
-        let start_x = w - wm_w - 50;
-        let start_y = h - wm_h - 50;
+        // 2. Gerakkan Musuh jatuh
+        ENEMY_Y -= 0.02;
 
-        for y in start_y..(start_y + wm_h) {
-            for x in start_x..(start_x + wm_w) {
-                let idx = (y * w + x) * 4;
-                if idx + 3 < size {
-                    // Logika Pixel Blending: 
-                    // Kita buat efek semi-transparan dengan menggeser bit (Fast Math)
-                    pixels[idx]     = (pixels[idx] >> 1) + 120;     // Red
-                    pixels[idx + 1] = (pixels[idx + 1] >> 1) + 120; // Green
-                    pixels[idx + 2] = (pixels[idx + 2] >> 1) + 120; // Blue
-                    // pixels[idx + 3] adalah Alpha, biarkan tetap 255
-                }
-            }
+        // 3. Jika musuh sampai bawah, reset ke atas (Dapat Poin!)
+        if ENEMY_Y < 0.0 {
+            ENEMY_Y = 1.0;
+            ENEMY_X = (PLAYER_X + 0.3) % 1.0; // Acak posisi sedikit
+            SCORE += 1;
         }
+
+        // 4. Cek Tabrakan (Game Over sederhana)
+        let dx = (PLAYER_X - ENEMY_X).abs();
+        let dy = (0.1 - ENEMY_Y).abs();
+        if dx < 0.1 && dy < 0.1 {
+            SCORE = 0; // Reset score jika kena
+            ENEMY_Y = 1.0;
+        }
+        
+        SCORE
     }
 }
+
+#[no_mangle] pub extern "C" fn get_player_x() -> f32 { unsafe { PLAYER_X } }
+#[no_mangle] pub extern "C" fn get_enemy_x() -> f32 { unsafe { ENEMY_X } }
+#[no_mangle] pub extern "C" fn get_enemy_y() -> f32 { unsafe { ENEMY_Y } }
