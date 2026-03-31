@@ -2,7 +2,6 @@
 #include <android_native_app_glue.h>
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
-#include <android/log.h>
 
 extern float get_cpu_usage();
 extern float get_ram_usage();
@@ -17,21 +16,33 @@ struct engine {
     int32_t height;
 };
 
+void draw_bar(float x, float y, float val, float r, float g, float b, int win_w, int win_h) {
+    // Background Bar (Abu-abu gelap)
+    glScissor((int)(0.2f * win_w), (int)(y * win_h), (int)(0.7f * win_w), (int)(0.05f * win_h));
+    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Isi Bar (Warna dinamis)
+    if (val > 0.0f) {
+        glScissor((int)(0.2f * win_w), (int)(y * win_h), (int)(val * 0.7f * win_w), (int)(0.05f * win_h));
+        glClearColor(r, g, b, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+}
+
 static void draw_frame(struct engine* engine) {
     if (engine->display == EGL_NO_DISPLAY) return;
 
-    // Bersihkan layar jadi Biru Tua
     glClearColor(0.05f, 0.05f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    
     glEnable(GL_SCISSOR_TEST);
-    
-    // Gambar Bar Sederhana (Hanya satu dulu untuk tes)
-    float val = get_cpu_usage();
-    glScissor(100, 500, (int)(val * 500.0f), 100);
-    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    
+
+    // Gambar 4 Indikator Utama
+    draw_bar(0.2f, 0.80f, get_cpu_usage(),  0.9f, 0.1f, 0.1f, engine->width, engine->height); // CPU - MERAH
+    draw_bar(0.2f, 0.70f, get_ram_usage(),  0.1f, 0.5f, 1.0f, engine->width, engine->height); // RAM - BIRU
+    draw_bar(0.2f, 0.60f, get_bat_level(),  0.2f, 0.9f, 0.3f, engine->width, engine->height); // BAT - HIJAU
+    draw_bar(0.2f, 0.50f, get_temp_level(), 1.0f, 0.6f, 0.0f, engine->width, engine->height); // SUHU - ORANYE
+
     glDisable(GL_SCISSOR_TEST);
     eglSwapBuffers(engine->display, engine->surface);
 }
@@ -44,7 +55,7 @@ static void handle_cmd(struct android_app* app, int32_t cmd) {
                 engine->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
                 eglInitialize(engine->display, 0, 0);
                 EGLConfig config; EGLint num;
-                eglChooseConfig(engine->display, (EGLint[]){EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_NONE}, &config, 1, &num);
+                eglChooseConfig(engine->display, (EGLint[]){EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_BLUE_SIZE, 8, EGL_NONE}, &config, 1, &num);
                 engine->surface = eglCreateWindowSurface(engine->display, config, app->window, NULL);
                 engine->context = eglCreateContext(engine->display, config, NULL, (EGLint[]){EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE});
                 eglMakeCurrent(engine->display, engine->surface, engine->surface, engine->context);
