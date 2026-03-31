@@ -9,6 +9,7 @@
 #define LOG_TAG "CAKRU_GAME"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
+// Extern fungsi dari Rust
 extern int update_game(float x);
 extern float get_player_x();
 extern float get_enemy_x();
@@ -39,10 +40,11 @@ static void draw_frame(struct engine* engine) {
     eglQuerySurface(engine->display, engine->surface, EGL_WIDTH, &w);
     eglQuerySurface(engine->display, engine->surface, EGL_HEIGHT, &h);
 
+    // LOGIKA UPDATE & TRIGGER SUARA
     int status = update_game(engine->last_touch_x);
     if (status == -1) {
         LOGI("BOOM! Nabrak!");
-        play_crash_sound();
+        play_crash_sound(); // SUARA AKTIF!
     }
 
     glClearColor(0.1f, 0.1f, 0.12f, 1.0f);
@@ -54,11 +56,13 @@ static void draw_frame(struct engine* engine) {
         draw_box(get_player_x() - 0.05f, 0.15f, 0.15f, 0.08f, 0.0f, 0.6f, 1.0f, w, h);
         draw_box(get_enemy_x() - 0.05f, get_enemy_y(), 0.12f, 0.07f, 1.0f, 0.8f, 0.0f, w, h);
     } else {
+        // Efek Pecah
         for(int i=0; i<10; i++) {
             draw_box(get_p_x(i), get_p_y(i), 0.03f, 0.02f, 1.0f, 0.4f, 0.0f, w, h);
         }
     }
 
+    // Skor (Barisan kotak putih di atas)
     for(int i=0; i < (status > 0 ? status : 0); i++) {
         draw_box(0.05f + (i * 0.04f), 0.92f, 0.02f, 0.02f, 1.0f, 1.0f, 1.0f, w, h);
     }
@@ -111,6 +115,7 @@ void android_main(struct android_app* state) {
     state->onAppCmd = handle_cmd;
     state->onInputEvent = handle_input;
 
+    // Inisialisasi OpenSL ES
     init_sound();
 
     while (1) {
