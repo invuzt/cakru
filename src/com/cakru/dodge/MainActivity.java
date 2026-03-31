@@ -2,30 +2,29 @@ package com.cakru.dodge;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.graphics.Color;
-import android.view.Gravity;
 import android.widget.TextView;
+import android.view.Gravity;
+import android.graphics.Color;
 
 public class MainActivity extends Activity {
-    // Memuat library libhello.so (hasil kompilasi C + Rust)
     static {
+        // Nama library harus sesuai dengan LOCAL_MODULE di Android.mk
         System.loadLibrary("hello");
     }
 
-    // Mendeklarasikan fungsi yang ada di sisi Native (C/Rust)
+    // Nama fungsi ini akan dicari di hello.c
     public native String stringFromRust();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Membuat TextView secara dinamis
         TextView tv = new TextView(this);
-        tv.setTextSize(24);
-        tv.setTextColor(Color.parseColor("#4CAF50")); // Warna Hijau Rust-ish
+        tv.setTextSize(25);
         tv.setGravity(Gravity.CENTER);
+        tv.setTextColor(Color.BLUE);
         
-        // Memanggil fungsi Rust dan menampilkan teksnya!
+        // Ambil teks dari Rust!
         tv.setText(stringFromRust());
         
         setContentView(tv);

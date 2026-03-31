@@ -2,19 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cakru.dodge">
 
-    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="34" />
-
     <application 
         android:label="Cakru" 
-        android:hasCode="true">
+        android:hasCode="true"
+        android:icon="@mipmap/ic_launcher">
         
         <activity
             android:name=".MainActivity"
-            android:label="Cakru"
             android:exported="true"
-            android:screenOrientation="portrait"
-            android:configChanges="orientation|keyboardHidden|screenSize">
-            
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
