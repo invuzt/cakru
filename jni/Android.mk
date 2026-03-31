@@ -1,13 +1,11 @@
 LOCAL_PATH := $(call my-dir)
 
-# 1. Deklarasikan Pustaka Rust sebagai Prebuilt
 include $(CLEAR_VARS)
 LOCAL_MODULE := rust_logic
-# Sesuaikan path ini dengan tempat Cargo menyimpan file .a (biasanya di target/...)
-LOCAL_SRC_FILES := ../rust_logic/target/aarch64-linux-android/release/librust_logic.a
+# Kita asumsikan file ada di folder jni/ saat build
+LOCAL_SRC_FILES := librust_logic.a
 include $(PREBUILT_STATIC_LIBRARY)
 
-# 2. Bangun Shared Library Utama
 include $(CLEAR_VARS)
 LOCAL_MODULE := hello
 LOCAL_SRC_FILES := hello.c sound.c

@@ -5,3 +5,4 @@ gen/
 obj/
 rust_logic/target/
 .DS_Store
+jni/librust_logic.a
