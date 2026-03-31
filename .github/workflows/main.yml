@@ -24,24 +24,33 @@ jobs:
           NDK_PATH=$(ls -d $ANDROID_SDK_ROOT/ndk/* | head -n 1)
           make NDK_PATH=$NDK_PATH
 
-      - name: Package to APK
+      - name: Compile Resources & Manifest (The Fix)
         run: |
-          mkdir -p build/apk/lib/arm64-v8a
-          cp libs/arm64-v8a/libhello.so build/apk/lib/arm64-v8a/
+          # Cari lokasi build-tools
+          BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
+          PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
           
-          # Buat Manifest sederhana
-          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.cakru.dodge" android:versionCode="1" android:versionName="1.0"><uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" /><application android:hasCode="false" android:label="Cakru Dodge"><activity android:name="android.app.NativeActivity" android:configChanges="orientation|keyboardHidden" android:exported="true"><meta-data android:name="android.app.lib_name" android:value="hello" /><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > build/apk/AndroidManifest.xml
+          mkdir -p build/gen
           
-          cd build/apk && zip -r ../../cakru-unsigned.apk .
+          # Buat file manifest sementara
+          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.cakru.dodge"><uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" /><application android:hasCode="false" android:label="Cakru Dodge"><activity android:name="android.app.NativeActivity" android:configChanges="orientation|keyboardHidden" android:exported="true"><meta-data android:name="android.app.lib_name" android:value="hello" /><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > AndroidManifest.xml
 
-      - name: Sign APK (Fix MinSdkVersion)
+          # Gunakan aapt untuk me-link manifest menjadi binary
+          $BUILD_TOOLS_PATH/aapt package -f -M AndroidManifest.xml -I $PLATFORM_JAR -F cakru-unsigned.apk build/gen
+
+      - name: Add Native Library to APK
+        run: |
+          # Masukkan file .so ke dalam APK yang sudah dibuat aapt
+          mkdir -p lib/arm64-v8a
+          cp libs/arm64-v8a/libhello.so lib/arm64-v8a/
+          zip -g cakru-unsigned.apk lib/arm64-v8a/libhello.so
+
+      - name: Sign APK
         run: |
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Cakru, OU=Dev, O=Cakru, L=Ponorogo, S=EastJava, C=ID"
           
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
-          
-          # Tambahkan --min-sdk-version 21 agar apksigner tidak mengecek Manifest XML yang mentah
-          $BUILD_TOOLS_PATH/apksigner sign --ks debug.keystore --ks-pass pass:android --min-sdk-version 21 --out cakru-final.apk cakru-unsigned.apk
+          $BUILD_TOOLS_PATH/apksigner sign --ks debug.keystore --ks-pass pass:android --out cakru-final.apk cakru-unsigned.apk
 
       - name: Upload Cakru APK
         uses: actions/upload-artifact@v4
