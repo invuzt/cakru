@@ -16,19 +16,39 @@ jobs:
         run: |
           cd rust_logic
           cargo build --target aarch64-linux-android --release
+          mkdir -p ../jni
           cp target/aarch64-linux-android/release/libcakru_core.a ../jni/
 
-      - name: Generate Debug Keystore
-        run: |
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Cakru, OU=Dev, O=Cakru, L=Ponorogo, S=EastJava, C=ID"
-
-      - name: Build Final APK
+      - name: Build Native Code (NDK)
         run: |
           NDK_PATH=$(ls -d $ANDROID_SDK_ROOT/ndk/* | head -n 1)
           make NDK_PATH=$NDK_PATH
+
+      - name: Package to APK
+        run: |
+          # 1. Buat folder struktur APK
+          mkdir -p build/apk/lib/arm64-v8a
+          
+          # 2. Masukkan library hasil compile NDK ke dalam folder lib APK
+          cp libs/arm64-v8a/libhello.so build/apk/lib/arm64-v8a/
+          
+          # 3. Buat Manifest (KTP-nya Aplikasi)
+          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.cakru.dodge"><application android:hasCode="false" android:label="Cakru Dodge"><activity android:name="android.app.NativeActivity" android:configChanges="orientation|keyboardHidden" android:exported="true"><meta-data android:name="android.app.lib_name" android:value="hello" /><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > build/apk/AndroidManifest.xml
+          
+          # 4. Zip menjadi APK mentah
+          cd build/apk && zip -r ../../cakru-unsigned.apk .
+
+      - name: Sign APK (Agar Bisa Diinstal)
+        run: |
+          # Buat kunci pengaman otomatis
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Cakru, OU=Dev, O=Cakru, L=Ponorogo, S=EastJava, C=ID"
+          
+          # Cari tool apksigner di SDK
+          BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
+          $BUILD_TOOLS_PATH/apksigner sign --ks debug.keystore --ks-pass pass:android --out cakru-final.apk cakru-unsigned.apk
 
       - name: Upload Cakru APK
         uses: actions/upload-artifact@v4
         with:
           name: Cakru-Hybrid-Final
-          path: "cakru-final.apk"
+          path: cakru-final.apk
