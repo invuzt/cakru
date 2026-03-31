@@ -1,4 +1,4 @@
-name: Build Cakru Hybrid
+name: Build Cakru Dodge
 on: [push]
 
 jobs:
@@ -24,36 +24,35 @@ jobs:
           NDK_PATH=$(ls -d $ANDROID_SDK_ROOT/ndk/* | head -n 1)
           make NDK_PATH=$NDK_PATH
 
-      - name: Compile Resources & Manifest (The Fix)
+      - name: Assemble APK with AAPT (The Parse Fix)
         run: |
-          # Cari lokasi build-tools
+          # Cari lokasi build-tools & platform android
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
           PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
           
-          mkdir -p build/gen
-          
-          # Buat file manifest sementara
+          # Buat Manifest Biner
           echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.cakru.dodge"><uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" /><application android:hasCode="false" android:label="Cakru Dodge"><activity android:name="android.app.NativeActivity" android:configChanges="orientation|keyboardHidden" android:exported="true"><meta-data android:name="android.app.lib_name" android:value="hello" /><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > AndroidManifest.xml
 
-          # Gunakan aapt untuk me-link manifest menjadi binary
-          $BUILD_TOOLS_PATH/aapt package -f -M AndroidManifest.xml -I $PLATFORM_JAR -F cakru-unsigned.apk build/gen
+          # Rakit APK dasar (Manifest + Resource kosong)
+          mkdir -p empty_res
+          $BUILD_TOOLS_PATH/aapt package -f -M AndroidManifest.xml -I $PLATFORM_JAR -F cakru-temp.apk empty_res
 
-      - name: Add Native Library to APK
+      - name: Inject Native Library
         run: |
-          # Masukkan file .so ke dalam APK yang sudah dibuat aapt
+          # Masukkan file .so ke dalam folder lib/arm64-v8a di dalam APK
           mkdir -p lib/arm64-v8a
           cp libs/arm64-v8a/libhello.so lib/arm64-v8a/
-          zip -g cakru-unsigned.apk lib/arm64-v8a/libhello.so
+          zip -g cakru-temp.apk lib/arm64-v8a/libhello.so
 
-      - name: Sign APK
+      - name: Sign APK (Cakru Dodge)
         run: |
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Cakru, OU=Dev, O=Cakru, L=Ponorogo, S=EastJava, C=ID"
           
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
-          $BUILD_TOOLS_PATH/apksigner sign --ks debug.keystore --ks-pass pass:android --out cakru-final.apk cakru-unsigned.apk
+          $BUILD_TOOLS_PATH/apksigner sign --ks debug.keystore --ks-pass pass:android --out cakru.apk cakru-temp.apk
 
-      - name: Upload Cakru APK
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cakru-Hybrid-Final
-          path: cakru-final.apk
+          name: Cakru-Dodge-Build
+          path: cakru.apk
