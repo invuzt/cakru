@@ -18,6 +18,7 @@ jobs:
       - name: Build Rust Logic
         run: |
           cd rust_logic
+          # Build library statis Rust
           cargo build --target aarch64-linux-android --release
           mkdir -p ../jni
           cp target/aarch64-linux-android/release/libcakru_core.a ../jni/
@@ -25,6 +26,7 @@ jobs:
       - name: Build Native Code (NDK)
         run: |
           NDK_PATH=$(ls -d $ANDROID_SDK_ROOT/ndk/* | tail -1)
+          # Menggabungkan Rust ke dalam libhello.so
           $NDK_PATH/ndk-build NDK_PROJECT_PATH=. \
             APP_BUILD_SCRIPT=jni/Android.mk \
             NDK_APPLICATION_MK=jni/Application.mk
@@ -33,11 +35,13 @@ jobs:
         run: |
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
           PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
-          
+
           mkdir -p obj/java
+          # Kompilasi semua file Java
           find src -name "*.java" > java_files.txt
           javac -d obj/java -cp $PLATFORM_JAR @java_files.txt
 
+          # Convert ke DEX format (D8)
           $BUILD_TOOLS_PATH/d8 --release --lib $PLATFORM_JAR --output . obj/java/com/cakru/dodge/*.class
 
       - name: Assemble APK
@@ -45,14 +49,20 @@ jobs:
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
           PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
 
-          # Persiapkan struktur folder APK
+          # --- FIX: Buat dummy resource agar AAPT tidak error ---
           mkdir -p res/drawable
-          $BUILD_TOOLS_PATH/aapt package -f -M AndroidManifest.xml -I $PLATFORM_JAR -S res -F cakru-temp.apk
-          
-          # Masukkan DEX
+          echo '<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#FF0000"/></shape>' > res/drawable/ic_launcher.xml
+
+          # Packaging dengan AAPT
+          $BUILD_TOOLS_PATH/aapt package -f -M AndroidManifest.xml \
+            -I $PLATFORM_JAR \
+            -S res \
+            -F cakru-temp.apk
+
+          # Masukkan DEX ke dalam APK
           zip -g cakru-temp.apk classes.dex
-          
-          # Masukkan Native Libs (.so)
+
+          # Masukkan Native Libs (.so) dari folder libs hasil NDK
           mkdir -p lib/arm64-v8a
           cp libs/arm64-v8a/libhello.so lib/arm64-v8a/
           zip -rg cakru-temp.apk lib/
@@ -60,14 +70,16 @@ jobs:
       - name: Sign & Align APK
         run: |
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
-          
+
           # Buat keystore debug otomatis
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey \
             -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Cakru, O=Odfiz, C=ID"
-          
-          # Align dulu baru Sign (Standar Google)
+
+          # Optimasi struktur file (Zipalign)
           $BUILD_TOOLS_PATH/zipalign -f 4 cakru-temp.apk cakru-aligned.apk
+          
+          # Tanda tangan APK agar bisa diinstall
           $BUILD_TOOLS_PATH/apksigner sign --ks debug.keystore \
             --ks-pass pass:android \
             --out cakru-final.apk cakru-aligned.apk
