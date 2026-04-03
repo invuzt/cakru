@@ -1,8 +1,23 @@
-*.jks
-*.jkr
+# Rust build artifacts
+rust_logic/target/
+jni/librust_logic.a
+Cargo.lock
+
+# Android build artifacts
 bin/
 gen/
 obj/
-rust_logic/target/
+libs/
+output/
+*.apk
+*.ap_
+
+# Keys (JANGAN DI-PUSH!)
+*.jkr
+*.jks
+*.keystore
+
+# Temporary files
 .DS_Store
-jni/librust_logic.a
+Thumbs.db
+
