@@ -1,22 +1,22 @@
 #include <jni.h>
+#include <string.h>
 
-// Deklarasi fungsi yang ada di rust_logic/src/lib.rs
-// Fungsi ini harus mengembalikan char* yang dialokasikan di Rust
-extern char* get_hello_rust();
+// Deklarasi fungsi dari Rust (rust_logic/src/lib.rs)
+extern char* rust_engine(const char* input);
 
 JNIEXPORT jstring JNICALL
-Java_com_cakru_dodge_MainActivity_stringFromRust(JNIEnv* env, jobject thiz) {
+Java_com_cakru_dodge_MainActivity_prosesDiRust(JNIEnv* env, jobject thiz, jstring input) {
+    // 1. Ambil string dari Java
+    const char *nativeString = (*env)->GetStringUTFChars(env, input, 0);
+
+    // 2. Oper ke "Otak" Rust
+    char* hasilRust = rust_engine(nativeString);
+
+    // 3. Bebaskan memori input Java
+    (*env)->ReleaseStringUTFChars(env, input, nativeString);
+
+    // 4. Kirim balik hasil Rust ke Java
+    jstring result = (*env)->NewStringUTF(env, hasilRust);
     
-    // 1. Ambil pointer string dari Rust
-    char* str = get_hello_rust();
-
-    // 2. Ubah ke jstring agar bisa dibaca oleh Java
-    jstring result = (*env)->NewStringUTF(env, str);
-
-    // Catatan: Jika Rust menggunakan CString::into_raw, 
-    // idealnya kamu butuh fungsi khusus untuk membebaskan memori ini.
-    // Tapi untuk string "Hello" sederhana, ini sudah cukup untuk testing.
-
     return result;
 }
-
