@@ -42,6 +42,12 @@ jobs:
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
           PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
           
+          # --- FIX: Buat ikon ic_launcher darurat jika belum ada ---
+          mkdir -p res/drawable
+          if [ ! -f res/drawable/ic_launcher.xml ] && [ ! -f res/drawable/ic_launcher.png ]; then
+            echo '<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#FF0000"/><size android:width="48dp" android:height="48dp"/></shape>' > res/drawable/ic_launcher.xml
+          fi
+
           # Packaging res (layout, strings, dll)
           $BUILD_TOOLS_PATH/aapt package -f -M AndroidManifest.xml -I $PLATFORM_JAR -S res -F cakru-unsigned.apk
           
