@@ -9,8 +9,8 @@
     <application
         android:label="Cakru"
         android:icon="@drawable/ic_launcher"
-        android:theme="@android:style/Theme.DeviceDefault.DayNight"
-        android:hasCode="true">
+android:theme="@style/AppTheme"
+	android:hasCode="true">
 
         <activity
             android:name="com.cakru.dodge.MainActivity"
