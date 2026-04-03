@@ -29,38 +29,43 @@ jobs:
             APP_BUILD_SCRIPT=jni/Android.mk \
             NDK_APPLICATION_MK=jni/Application.mk
 
-      - name: Compile Java & Create DEX
-        run: |
-          BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
-          # Gunakan SDK 34 agar kompatibel dengan Android terbaru
-          PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
-
-          mkdir -p obj/java
-          find src -name "*.java" > java_files.txt
-          javac -d obj/java -cp $PLATFORM_JAR @java_files.txt
-
-          # Gunakan d8 untuk menghasilkan DEX yang modern
-          $BUILD_TOOLS_PATH/d8 --release --lib $PLATFORM_JAR --output . obj/java/com/cakru/dodge/*.class
-
-      - name: Package APK (Fix Compatibility)
+      - name: Generate R.java and Compile Java
         run: |
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
           PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
-
-          # Pastikan folder res ada isinya (mencegah error icon)
+          
+          # 1. Pastikan folder res ada isinya agar AAPT tidak error
           mkdir -p res/drawable
           if [ ! -f res/drawable/ic_launcher.xml ]; then
             echo '<shape xmlns:android="http://schemas.android.com/apk/res/android"><solid android:color="#FF0000"/><size android:width="48dp" android:height="48dp"/></shape>' > res/drawable/ic_launcher.xml
           fi
 
-          # Tambahkan flag --target-sdk-version 34 agar tidak dianggap "Old Android"
+          # 2. Generate R.java (PENTING: Agar R.id dan R.layout dikenali)
+          mkdir -p gen
+          $BUILD_TOOLS_PATH/aapt package -f -m -J gen -S res -M AndroidManifest.xml -I $PLATFORM_JAR
+
+          # 3. Compile Java + R.java yang baru dibuat
+          mkdir -p obj/java
+          find src gen -name "*.java" > java_files.txt
+          javac -d obj/java -cp $PLATFORM_JAR @java_files.txt
+
+          # 4. Convert ke DEX (d8)
+          $BUILD_TOOLS_PATH/d8 --release --lib $PLATFORM_JAR --output . $(find obj/java -name "*.class")
+
+      - name: Package APK
+        run: |
+          BUILD_TOOLS_PATH=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | tail -1)
+          PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-34/android.jar
+
+          # Build APK mentah
           $BUILD_TOOLS_PATH/aapt package -f -M AndroidManifest.xml \
             -I $PLATFORM_JAR \
             -S res \
             -F cakru-unsigned.apk \
             --target-sdk-version 34 \
             --min-sdk-version 24
-          
+
+          # Masukkan file pendukung
           zip -g cakru-unsigned.apk classes.dex
           mkdir -p lib/arm64-v8a
           cp libs/arm64-v8a/libhello.so lib/arm64-v8a/
@@ -75,7 +80,6 @@ jobs:
             -dname "CN=Cakru, O=Odfiz, C=ID"
           
           $BUILD_TOOLS_PATH/zipalign -f 4 cakru-unsigned.apk cakru-aligned.apk
-          # Gunakan apksigner (v2/v3 signing) agar Android 11+ mau menginstall
           $BUILD_TOOLS_PATH/apksigner sign --ks debug.keystore \
             --ks-pass pass:android \
             --out cakru-final.apk cakru-aligned.apk
@@ -85,4 +89,3 @@ jobs:
         with:
           name: Cakru-Final-APK
           path: cakru-final.apk
-
