@@ -13,37 +13,41 @@ pub extern "C" fn rust_engine(input: *const c_char) -> *mut c_char {
     let c_str = unsafe { CStr::from_ptr(input) };
     let input_str = c_str.to_str().unwrap_or("error");
     
-    let mut log_ui = format!("[LOG: Perintah: '{}']\n", input_str);
+    let mut log_ui = format!("[LOG: Mode: '{}']\n", input_str);
 
     let response = match input_str.to_lowercase().as_str() {
-        "mining" | "simulasi" => {
-            log_ui.push_str("[LOG: Memulai simulasi 1.000.000 transaksi...]\n");
+        "brute" => {
+            log_ui.push_str("[LOG: Memulai Brute-Force Simulation...]\n");
+            log_ui.push_str("[LOG: Mencari Nonce untuk Hash Target...]\n");
             
-            let mut total_btc_transfered: f64 = 0.0;
-            let target_count = 1_000_000;
-
-            // Simulasi proses 1 juta data transfer
-            for i in 0..target_count {
-                // Simulasi nominal acak sederhana
-                total_btc_transfered += 0.0001;
+            let target = 777777; // Angka keberuntungan yang dicari
+            let mut nonce = 0;
+            let mut hash_attempt: u64 = 123456789; // Seed awal
+            
+            // Lakukan percobaan tebakan sampai ketemu target
+            // Kita batasi maksimal 5 juta percobaan agar HP tidak freeze
+            for i in 0..5_000_000 {
+                nonce = i;
+                // Logika "Linear Congruential Generator" (Simulasi Hashing)
+                hash_attempt = (hash_attempt.wrapping_mul(1664525).wrapping_add(1013904223)) % 1_000_000;
                 
-                // Setiap 250rb data, kita catat di log internal Rust (opsional)
-                if i == 500_000 {
-                    // Hanya penanda internal proses mencapai 50%
+                if hash_attempt == target {
+                    log_ui.push_str(&format!("[LOG: SUCCESS! Found at attempt: {}]\n", i));
+                    break;
                 }
             }
 
             format!(
-                "=== BITCOIN SIMULATOR ===\n\
-                 Status: Block Mined!\n\
-                 Data Diolah: {} Transaksi\n\
-                 Volume: {:.2} BTC\n\
-                 Kecepatan: Sangat Tinggi (Rust Core)\n\
+                "=== RUST CRYPTO BRUTE ===\n\
+                 Target Number : {}\n\
+                 Last Nonce    : {}\n\
+                 Result Hash   : {}\n\
+                 Status        : VALIDATED\n\
                  =========================", 
-                target_count, total_btc_transfered
+                target, nonce, hash_attempt
             )
         },
-        _ => format!("Ketik 'mining' untuk simulasi 1 juta data."),
+        _ => "Ketik 'brute' untuk simulasi tebak hash 5 juta data.".to_string(),
     };
 
     let duration = start_time.elapsed();
