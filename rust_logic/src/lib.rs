@@ -5,7 +5,6 @@ use android_logger::Config;
 
 #[no_mangle]
 pub extern "C" fn rust_engine(input: *const c_char) -> *mut c_char {
-    // Inisialisasi logger agar tidak error saat dipanggil
     android_logger::init_once(
         Config::default()
             .with_max_level(LevelFilter::Trace)
